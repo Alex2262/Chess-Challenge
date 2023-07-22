@@ -1,108 +1,134 @@
-﻿using Raylib_cs;
-using System.IO;
-using System.Numerics;
-using System.Runtime.InteropServices;
+﻿using System;
+using ChessChallenge.API;
+using ChessChallenge.Chess;
+using Board = ChessChallenge.API.Board;
+using Move = ChessChallenge.API.Move;
+using Timer = ChessChallenge.API.Timer;
 
 namespace ChessChallenge.Application
 {
     static class Program
     {
-        const bool hideRaylibLogs = true;
-        static Camera2D cam;
 
+        private static String GetMoveNameUCI(Move move)
+        {
+            if (move.IsNull)
+            {
+                return "Null";
+            }
+            string startSquareName = BoardHelper.SquareNameFromIndex(move.StartSquare.Index);
+            string endSquareName = BoardHelper.SquareNameFromIndex(move.TargetSquare.Index);
+            string moveName = startSquareName + endSquareName;
+            if (move.IsPromotion)
+            {
+                switch (move.PromotionPieceType)
+                {
+                    case PieceType.Rook:
+                        moveName += "r";
+                        break;
+                    case PieceType.Knight:
+                        moveName += "n";
+                        break;
+                    case PieceType.Bishop:
+                        moveName += "b";
+                        break;
+                    case PieceType.Queen:
+                        moveName += "q";
+                        break;
+                }
+            }
+            return moveName;
+        }
         public static void Main()
         {
-            Vector2 loadedWindowSize = GetSavedWindowSize();
-            int screenWidth = (int)loadedWindowSize.X;
-            int screenHeight = (int)loadedWindowSize.Y;
+            String startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+            MyBot myBot = new MyBot();
 
-            if (hideRaylibLogs)
+            Board board = Board.CreateBoardFromFEN(startFen);
+
+            while (true)
             {
-                unsafe
+                String line = Console.ReadLine();
+                String[] tokens = line.Split();
+
+                if (tokens[0] == "uci")
                 {
-                    Raylib.SetTraceLogCallback(&LogCustom);
+                    Console.WriteLine("id name Chess Challenge - Antares");
+                    Console.WriteLine("id author Sebastian Lague, Antares");
+                    Console.WriteLine("uciok");
                 }
-            }
 
-            Raylib.InitWindow(screenWidth, screenHeight, "Chess Coding Challenge");
-            Raylib.SetTargetFPS(60);
-
-            UpdateCamera();
-
-            ChallengeController controller = new();
-
-            while (!Raylib.WindowShouldClose())
-            {
-                Raylib.BeginDrawing();
-                Raylib.ClearBackground(new Color(22, 22, 22, 255));
-                Raylib.BeginMode2D(cam);
-
-                controller.Update();
-                controller.Draw();
-
-                Raylib.EndMode2D();
-
-                controller.DrawOverlay();
-
-                Raylib.EndDrawing();
-            }
-
-            Raylib.CloseWindow();
-
-            controller.Release();
-            UIHelper.Release();
-        }
-
-        public static void SetWindowSize(Vector2 size)
-        {
-            Raylib.SetWindowSize((int)size.X, (int)size.Y);
-            UpdateCamera();
-            SaveWindowSize();
-        }
-
-        public static Vector2 ScreenToWorldPos(Vector2 screenPos) => Raylib.GetScreenToWorld2D(screenPos, cam);
-
-        static void UpdateCamera()
-        {
-            cam = new Camera2D();
-            int screenWidth = Raylib.GetScreenWidth();
-            int screenHeight = Raylib.GetScreenHeight();
-            cam.target = new Vector2(0, 15);
-            cam.offset = new Vector2(screenWidth / 2f, screenHeight / 2f);
-            cam.zoom = screenWidth / 1280f * 0.7f;
-        }
-
-
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
-        private static unsafe void LogCustom(int logLevel, sbyte* text, sbyte* args)
-        {
-        }
-
-        static Vector2 GetSavedWindowSize()
-        {
-            if (File.Exists(FileHelper.PrefsFilePath))
-            {
-                string prefs = File.ReadAllText(FileHelper.PrefsFilePath);
-                if (!string.IsNullOrEmpty(prefs))
+                if (tokens[0] == "position")
                 {
-                    if (prefs[0] == '0')
+                    int nextIndex = 0;
+                    if (tokens[1] == "startpos")
                     {
-                        return Settings.ScreenSizeSmall;
+                        board = Board.CreateBoardFromFEN(startFen);
+                        nextIndex = 2;
                     }
-                    else if (prefs[0] == '1')
+
+                    else if (tokens[1] == "fen")
                     {
-                        return Settings.ScreenSizeBig;
+                        String fen = "";
+                        for (int i = 2; i < 8; i++)
+                        {
+                            fen += tokens[i];
+                            fen += " ";
+                        }
+
+                        nextIndex = 8;
+                    }
+
+                    else continue;
+
+                    if (tokens.Length <= nextIndex || tokens[nextIndex] != "moves") continue;
+
+                    for (int i = nextIndex + 1; i < tokens.Length; i++)
+                    {
+                        Move move = new Move(tokens[i], board);
+                        board.MakeMove(move);
                     }
                 }
-            }
-            return Settings.ScreenSizeSmall;
-        }
 
-        static void SaveWindowSize()
-        {
-            Directory.CreateDirectory(FileHelper.AppDataPath);
-            bool isBigWindow = Raylib.GetScreenWidth() > Settings.ScreenSizeSmall.X;
-            File.WriteAllText(FileHelper.PrefsFilePath, isBigWindow ? "1" : "0");
+                if (tokens[0] == "go")
+                {
+                    int allocatedTime = 0;
+                    int wTime = 0;
+                    int bTime = 0;
+                    int wInc = 0;
+                    int bInc = 0;
+
+                    for (int i = 1; i < tokens.Length; i += 2)
+                    {
+                        String type = tokens[i];
+                        int value = 0;
+
+                        if (tokens.Length > i + 1) value = int.Parse(tokens[i + 1]);
+
+                        if (type == "movetime") allocatedTime = (int)(value * 0.95);
+
+                        if (type == "wtime") wTime = value;
+
+                        if (type == "btime") bTime = value;
+
+                        if (type == "winc") wInc = value;
+
+                        if (type == "binc") bInc = value;
+                    }
+
+                    int selfTime = board.IsWhiteToMove ? wTime : bTime;
+                    int selfInc = board.IsWhiteToMove ? wInc : bInc;
+
+                    if (allocatedTime == 0)
+                    {
+                        allocatedTime = selfTime + selfInc;
+                    }
+
+                    Timer timer = new Timer(allocatedTime);
+                    Move move = myBot.Think(board, timer);
+                    Console.WriteLine("bestmove " + GetMoveNameUCI(move));
+                }
+            }
         }
 
       
