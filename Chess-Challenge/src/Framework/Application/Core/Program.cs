@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using ChessChallenge.API;
 using ChessChallenge.Chess;
 using Board = ChessChallenge.API.Board;
@@ -12,10 +13,6 @@ namespace ChessChallenge.Application
 
         private static String GetMoveNameUCI(Move move)
         {
-            if (move.IsNull)
-            {
-                return "Null";
-            }
             string startSquareName = BoardHelper.SquareNameFromIndex(move.StartSquare.Index);
             string endSquareName = BoardHelper.SquareNameFromIndex(move.TargetSquare.Index);
             string moveName = startSquareName + endSquareName;
@@ -46,16 +43,34 @@ namespace ChessChallenge.Application
 
             Board board = Board.CreateBoardFromFEN(startFen);
 
+            /*
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "src", "My Bot", "MyBot.cs");
+            Console.WriteLine(path);
+            using var stringReader = new StreamReader(path);
+            string text_code = stringReader.ReadToEnd();
+            Console.WriteLine(TokenCounter.CountTokens(text_code));
+            */
+
             while (true)
             {
                 String line = Console.ReadLine();
                 String[] tokens = line.Split();
+
+                if (tokens[0] == "quit")
+                {
+                    break;
+                }
 
                 if (tokens[0] == "uci")
                 {
                     Console.WriteLine("id name Chess Challenge - Antares");
                     Console.WriteLine("id author Sebastian Lague, Antares");
                     Console.WriteLine("uciok");
+                }
+
+                if (tokens[0] == "isready")
+                {
+                    Console.WriteLine("readyok");
                 }
 
                 if (tokens[0] == "position")
@@ -76,6 +91,7 @@ namespace ChessChallenge.Application
                             fen += " ";
                         }
 
+                        board = Board.CreateBoardFromFEN(fen);
                         nextIndex = 8;
                     }
 

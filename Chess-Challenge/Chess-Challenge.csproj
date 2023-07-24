@@ -32,6 +32,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="src\Framework\Application\Helpers\Token Counter\" />
+  </ItemGroup>
+  <ItemGroup>
     <None Update="resources\Fens.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -48,6 +51,7 @@
 
   <ItemGroup>
     <Folder Include="src\Framework\Chess\" />
+    <Folder Include="src\Framework\Application\Helpers\Token Counter\" />
   </ItemGroup>
 
   <ItemGroup>
