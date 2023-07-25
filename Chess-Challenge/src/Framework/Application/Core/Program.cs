@@ -61,11 +61,6 @@ namespace ChessChallenge.Application
                     break;
                 }
 
-                if (tokens[0] == "ucinewgame")
-                {
-                    myBot.gamePly = 0;
-                }
-
                 if (tokens[0] == "uci")
                 {
                     Console.WriteLine("id name Chess Challenge - Antares");
